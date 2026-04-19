@@ -1,28 +1,81 @@
-name: Run Unit Tests
+name: CI-CD Pipeline
 
 on:
   push:
-    branches:
-      - main   # trigger when code pushed to main
+    branches: [main]
   pull_request:
-    branches:
-      - main   # also run on PR
+    branches: [main]
 
 jobs:
+  # -----------------------
+  # 1. CI - TEST STAGE
+  # -----------------------
   test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 18
 
       - name: Install dependencies
         run: npm install
 
       - name: Run tests
         run: npm test
+
+
+  # -----------------------
+  # 2. BUILD STAGE
+  # -----------------------
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build || echo "No build step defined"
+
+
+  # -----------------------
+  # 3. MANUAL APPROVAL (HOLD BEFORE PROD)
+  # -----------------------
+  approval:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production   # 👈 THIS triggers manual approval in GitHub UI
+
+    steps:
+      - name: Waiting for approval
+        run: echo "Waiting for manual approval..."
+
+
+  # -----------------------
+  # 4. DEPLOY STAGE (PRODUCTION)
+  # -----------------------
+  deploy:
+    needs: approval
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy application
+        run: echo "🚀 Deploying to production server..."
